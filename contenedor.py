@@ -6,7 +6,7 @@ import psycopg2
 import subprocess
 
 # Configuración de la base de datos
-DB_HOST = "192.168.20.65"
+DB_HOST = "192.168.20.31"
 DB_NAME = "contenedor_db"
 DB_USER = "user_admin"
 DB_PASSWORD = "123456"
@@ -45,22 +45,33 @@ def conectar_base_datos():
         return None
 
 def existe_codigo_usuario(codigo_usuario):
-    """Verifica si un código de usuario existe en la base de datos."""
+    """Verifica si un código de usuario es válido y existe en la base de datos."""
+    
+    # Validar formato del código antes de consultar la base de datos
+    if not codigo_usuario[:-1].isdigit() or not codigo_usuario[-1].isalpha() or len(codigo_usuario) != 9:
+        print(f"Formato de código inválido: {codigo_usuario}")
+        return False
+    
+    # Intentar conectar con la base de datos
     connection = conectar_base_datos()
     if not connection:
+        print("No se pudo establecer conexión con la base de datos.")
         return False
+    
     try:
         cursor = connection.cursor()
         query = "SELECT 1 FROM usuarios WHERE codigo = %s;"
         cursor.execute(query, (codigo_usuario,))
         existe = cursor.fetchone() is not None
+        if not existe:
+            print(f"El código {codigo_usuario} no existe en la base de datos.")
         return existe
     except Exception as e:
         print(f"Error al verificar el código del usuario: {str(e)}")
         return False
     finally:
-        cursor.close()
         connection.close()
+
 
 def actualizar_base_datos(codigo_usuario, clase_predicha):
     """Actualiza la base de datos si el usuario existe."""
@@ -113,8 +124,8 @@ if __name__ == "__main__":
     while True:
         ruta_imagen = "Imagenes/captura.jpg"
         codigo_usuario = input("Ingresa el código del usuario: ")
-        capturar_imagen(ruta_imagen)
-        clase_predicha = predecir_imagen(ruta_imagen)
-        if clase_predicha:
+        if existe_codigo_usuario(codigo_usuario):
+            capturar_imagen(ruta_imagen)
+            clase_predicha = predecir_imagen(ruta_imagen)
             print(f"Clase predicha: {clase_predicha}")
             actualizar_base_datos(codigo_usuario, clase_predicha)
